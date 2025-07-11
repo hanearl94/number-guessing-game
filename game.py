@@ -1,9 +1,16 @@
 import random
-
+import json
+import os
 
 print("Welcome to random number guessing game!")
 
-scores = {}
+score_file = 'score.json'
+
+if os.path.exists(score_file):
+    with open(score_file, "r") as f:
+        scores = json.load(f)
+else:
+    scores = {}
 
 user = input("What is your username? ")
 
@@ -49,13 +56,17 @@ while True:
             if user not in scores:
                 scores[user] = []
             scores[user].append(attempts)
+
+            with open(score_file, "w") as f:
+                json.dump(scores, f)
+
             break
 
     play_again = input("Would you like to play again? (y/n): ").lower()
     if play_again != "y":
         print("\nScore Board:")
 
-        if scores:
+        if scores:ㅎ
             for user,attempts_list in scores.items():
                 attempts_str = ','.join(str(a) for a in attempts_list)
                 print(f"- {user}: {attempts_str}")
