@@ -1,119 +1,117 @@
+# game.py
+
 import random
 import json
 import os
 from datetime import datetime
 
-print("Welcome to random number guessing game!")
-
+# JSON file to store the scores
 score_file = 'score.json'
 
-if os.path.exists(score_file):
-    try:
-        with open(score_file, "r") as f:
-            data = json.load(f)
-            if isinstance(data, dict):
-                for user_name, records in data.items():
-                    if not isinstance(records, list):
-                        raise ValueError
-                    for record in records:
-                        if not isinstance(record, dict) or 'attempts' not in record or 'date' not in record:
+def load_scores():
+    """
+    Load scores from the JSON file.
+    If the file does not exist or is invalid, return an empty dictionary.
+    """
+    if os.path.exists(score_file):
+        try:
+            with open(score_file, "r") as f:
+                data = json.load(f)
+                # Validate the data structure
+                if isinstance(data, dict):
+                    for user_name, records in data.items():
+                        if not isinstance(records, list):
                             raise ValueError
-                scores = data
-            else:
-                raise ValueError
-    except Exception:
-        print("Warning: score.json is invalid or from old format. Resetting scores.")
-        scores = {}
-else:
-    scores = {}
+                        for record in records:
+                            if not isinstance(record, dict) or 'attempts' not in record or 'date' not in record:
+                                raise ValueError
+                    return data
+                else:
+                    raise ValueError
+        except Exception:
+            # If reading fails, reset scores
+            return {}
+    else:
+        # File does not exist, start fresh
+        return {}
 
-user = input("What is your username? ")
+def save_scores(scores):
+    """
+    Save the scores dictionary to the JSON file.
+    """
+    with open(score_file, "w") as f:
+        json.dump(scores, f, indent=2)
 
-while True:
-    min_range_input = input("Please enter the minimum number: ")
-    max_range_input = input("Please enter the maximum number: ")
+def play_game(user, min_range, max_range, guesses):
+    """
+    Core logic of the number guessing game.
 
-    if not min_range_input.isdigit() or not max_range_input.isdigit():
-        print("Please enter a number only")
-        continue
+    Arguments:
+        user (str): The username.
+        min_range (int): Minimum number of the range.
+        max_range (int): Maximum number of the range.
+        guesses (list[int]): List of guessed numbers.
 
-    min_range = int(min_range_input)
-    max_range = int(max_range_input)
+    Returns:
+        dict: {
+            "message": str - final message,
+            "new_record": bool - True if this is the best attempt,
+            "scoreboard": dict - the full scoreboard
+        }
+    """
+    # Load existing scores
+    scores = load_scores()
 
-    if min_range > max_range:
-        print("Minimum number must be smaller than maximum number")
-    elif min_range == max_range:
-        print("Minimum number cannot be same as maximum number")
-        continue
-
+    # Generate the secret random number
     secret_number = random.randint(min_range, max_range)
+
     attempts = 0
+    messages = []
 
-    print(f"\nPlease start guessing a number from {min_range} to {max_range}")
-
-    while True:
-        guess = input("Type in your guess: ")
-
-        if not guess.isdigit():
-            print("Only numbers are allowed")
+    # Process each guess
+    for guess in guesses:
+        if not isinstance(guess, int):
+            # Skip invalid inputs
+            messages.append("Invalid input, skipping.")
             continue
 
-        guess = int(guess)
         attempts += 1
 
         if guess < secret_number:
-            print("Your guess is too low")
+            messages.append(f"Attempt {attempts}: {guess} is too low.")
         elif guess > secret_number:
-            print("Your guess is too high")
+            messages.append(f"Attempt {attempts}: {guess} is too high.")
         else:
-            new_record = False
-            if user in scores and scores[user]:
-                previous_best = min(record['attempts'] for record in scores[user])
-                if attempts < previous_best:
-                    new_record = True
-            else:
-                new_record = True
-
-            print(f"Great Job!! You got it right with {attempts} attempts")
-            if new_record:
-                print("!!! NEW RECORD !!!")
-
+            # Correct guess
             today = datetime.now().strftime("%Y-%m-%d")
 
+            # Initialize user record if not exists
             if user not in scores:
                 scores[user] = []
 
+            # Save the current attempt
             scores[user].append({"date": today, "attempts": attempts})
+            save_scores(scores)
 
-            with open(score_file, "w") as f:
-                json.dump(scores, f, indent=2)
+            # Determine if this is a new record
+            new_record = False
+            if len(scores[user]) == 1:
+                new_record = True
+            else:
+                best_attempts = min(r['attempts'] for r in scores[user][:-1])
+                if attempts < best_attempts:
+                    new_record = True
 
-            break
+            # Return success result
+            return {
+                "message": f"Correct! You guessed the number {secret_number} in {attempts} attempts.",
+                "new_record": new_record,
+                "scoreboard": scores
+            }
 
-    play_again = input("Would you like to play again? (y/n): ").lower()
-    if play_again != "y":
-        print("\nScore Board:")
-
-        if scores:
-            user_averages = []
-            for user_name, attempts_list in scores.items():
-                total_attempts = sum(record['attempts'] for record in attempts_list)
-                avg_attempts = total_attempts / len(attempts_list)
-                user_averages.append((user_name, avg_attempts))
-
-            sorted_users = sorted(user_averages, key=lambda x: x[1])
-
-            print("\nLeaderboard (Lowest Average Attempts):")
-            for rank, (user_name, avg) in enumerate(sorted_users, start=1):
-                print(f"{rank}. {user_name} - Average Attempts: {avg:.2f}")
-
-            print("\nDetailed Records:")
-            for user_name,attempts_list in scores.items():
-                print(f"\n- {user_name}:")
-                for record in attempts_list:
-                    print(f"  Date: {record['date']} - Attempts: {record['attempts']}")
-        else:
-            print("There are no score records or history")
-
-        print("Thank you for playing!")
-        break
+    # If no correct guess was made
+    return {
+        "message": "You did not guess the number.",
+        "new_record": False,
+        "scoreboard": scores
+    }
