@@ -1,19 +1,30 @@
-# gui.py
 import tkinter as tk
 from tkinter import messagebox
-import game
+from game.storage import ScoreManager
+from game.core import GameEngine
 import random
 from datetime import datetime
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 class GuessingGameApp:
+    """
+    Tkinter GUI Application for Number Guessing Game
+    """
     def __init__(self, root):
         self.root = root
         self.root.title("Number Guessing Game")
 
+        # Initialize ScoreManager and GameEngine
+        self.score_manager = ScoreManager()
+        self.engine = GameEngine(self.score_manager)
+
         self.main_menu()
 
     def main_menu(self):
-        # Clear window
+        """
+        Display the main menu with options
+        """
         for widget in self.root.winfo_children():
             widget.destroy()
 
@@ -24,21 +35,25 @@ class GuessingGameApp:
         tk.Button(self.root, text="Exit", width=20, command=self.root.quit).pack(pady=5)
 
     def username_screen(self):
+        """
+        Screen to enter username
+        """
         for widget in self.root.winfo_children():
             widget.destroy()
 
         tk.Label(self.root, text="Enter Username:").pack()
         self.username_entry = tk.Entry(self.root)
         self.username_entry.pack()
-        self.username_entry.focus() #enabling cursor
-
-        # Enter key binding
+        self.username_entry.focus()
         self.username_entry.bind("<Return>", lambda event: self.range_screen())
 
         tk.Button(self.root, text="Next", command=self.range_screen).pack(pady=5)
         tk.Button(self.root, text="Back to Menu", command=self.main_menu).pack()
 
     def range_screen(self):
+        """
+        Screen to enter min and max range
+        """
         self.user = self.username_entry.get().strip()
         if not self.user:
             messagebox.showerror("Error", "Username required.")
@@ -52,22 +67,22 @@ class GuessingGameApp:
         tk.Label(self.root, text="Minimum number:").pack()
         self.min_entry = tk.Entry(self.root)
         self.min_entry.pack()
-        self.min_entry.focus()  # enabling cursor
+        self.min_entry.focus()
 
         tk.Label(self.root, text="Maximum number:").pack()
         self.max_entry = tk.Entry(self.root)
         self.max_entry.pack()
 
-        # Enter on min_entry moves focus to max_entry
         self.min_entry.bind("<Return>", lambda event: self.max_entry.focus())
-
-        # Enter on max_entry starts the game
         self.max_entry.bind("<Return>", lambda event: self.start_game())
 
         tk.Button(self.root, text="Start Game", command=self.start_game).pack(pady=5)
         tk.Button(self.root, text="Back to Menu", command=self.main_menu).pack()
 
     def start_game(self):
+        """
+        Start the guessing game
+        """
         try:
             self.min_value = int(self.min_entry.get())
             self.max_value = int(self.max_entry.get())
@@ -90,17 +105,16 @@ class GuessingGameApp:
 
         self.guess_entry = tk.Entry(self.root)
         self.guess_entry.pack()
-        self.guess_entry.focus()  # enabling cursor
-
-        # Enter key binding
+        self.guess_entry.focus()
         self.guess_entry.bind("<Return>", lambda event: self.submit_guess())
 
-        self.submit_button = tk.Button(self.root, text="Submit Guess", command=self.submit_guess)
-        self.submit_button.pack()
-
+        tk.Button(self.root, text="Submit Guess", command=self.submit_guess).pack()
         tk.Button(self.root, text="Quit Game", command=self.main_menu).pack()
 
     def submit_guess(self):
+        """
+        Handle guess submission
+        """
         guess_input = self.guess_entry.get()
         if not guess_input.isdigit():
             messagebox.showerror("Error", "Please enter a number.")
@@ -117,15 +131,14 @@ class GuessingGameApp:
             self.guess_label.config(text=f"Attempt {len(self.guesses)}: {guess} is too high.")
             self.guess_entry.delete(0, tk.END)
         else:
-            # Save score
+            # Save result
             today = datetime.now().strftime("%Y-%m-%d")
-            scores = game.load_scores()
+            scores = self.score_manager.load_scores()
             if self.user not in scores:
                 scores[self.user] = []
             scores[self.user].append({"date": today, "attempts": len(self.guesses)})
-            game.save_scores(scores)
+            self.score_manager.save_scores(scores)
 
-            # New record check
             new_record = False
             if len(scores[self.user]) == 1:
                 new_record = True
@@ -142,15 +155,15 @@ class GuessingGameApp:
             self.main_menu()
 
     def show_leaderboard(self):
-        import matplotlib.pyplot as plt
-        from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-
+        """
+        Display leaderboard and bar chart
+        """
         for widget in self.root.winfo_children():
             widget.destroy()
 
         tk.Label(self.root, text="Leaderboard", font=("Arial", 16)).pack(pady=10)
 
-        scores = game.load_scores()
+        scores = self.score_manager.load_scores()
         if not scores:
             tk.Label(self.root, text="No records yet.").pack()
         else:
@@ -162,27 +175,23 @@ class GuessingGameApp:
 
             sorted_users = sorted(user_averages, key=lambda x: x[1])
 
-            # Show text leaderboard
             for rank, (user_name, avg) in enumerate(sorted_users, start=1):
                 tk.Label(self.root, text=f"{rank}. {user_name}: Avg Attempts {avg:.2f}").pack()
 
-            # Prepare bar chart data
             users = [u for u, _ in sorted_users]
             averages = [a for _, a in sorted_users]
 
-            fig, ax = plt.subplots(figsize=(5, 3))
+            fig, ax = plt.subplots(figsize=(5,3))
             ax.bar(users, averages, color='skyblue')
             ax.set_title("Average Attempts per User")
             ax.set_ylabel("Average Attempts")
-            ax.set_ylim(0, max(averages) + 1)
+            ax.set_ylim(0, max(averages)+1)
 
-            # Embed matplotlib figure in Tkinter
             canvas = FigureCanvasTkAgg(fig, master=self.root)
             canvas.draw()
             canvas.get_tk_widget().pack(pady=10)
 
         tk.Button(self.root, text="Back to Menu", command=self.main_menu).pack(pady=10)
-
 
 # Run app
 if __name__ == "__main__":
