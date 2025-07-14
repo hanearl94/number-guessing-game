@@ -182,7 +182,29 @@ class GuessingGameApp:
             averages = [a for _, a in sorted_users]
 
             fig, ax = plt.subplots(figsize=(5,3))
-            ax.bar(users, averages, color='skyblue')
+
+            # Prepare bar chart data
+            users = [u for u, _ in sorted_users]
+            averages = [a for _, a in sorted_users]
+
+            # Generate random pastel colors for each user
+            colors = []
+            for _ in users:
+                r = random.uniform(0.4, 0.9)
+                g = random.uniform(0.4, 0.9)
+                b = random.uniform(0.4, 0.9)
+                colors.append((r, g, b))
+
+            fig, ax = plt.subplots(figsize=(5, 3))
+            ax.bar(users, averages, color=colors)
+            ax.set_title("Average Attempts per User")
+            ax.set_ylabel("Average Attempts")
+            ax.set_ylim(0, max(averages) + 1)
+
+            canvas = FigureCanvasTkAgg(fig, master=self.root)
+            canvas.draw()
+            canvas.get_tk_widget().pack(pady=10)
+
             ax.set_title("Average Attempts per User")
             ax.set_ylabel("Average Attempts")
             ax.set_ylim(0, max(averages)+1)
