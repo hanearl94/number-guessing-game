@@ -69,7 +69,7 @@ python3 gui.py
 
 ## 🎨 Screenshots
 
-*(Add your screenshots here)*
+*()*
 
 ---
 
@@ -82,6 +82,6 @@ Feel free to modify and use as you like.
 
 ## ✨ Author
 
-Your Name  
-[GitHub Profile](https://github.com/yourusername)
+Han Ryu  
+[GitHub Profile](https://github.com/hanearl94)
 
